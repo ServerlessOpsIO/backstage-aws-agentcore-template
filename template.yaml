@@ -1,0 +1,372 @@
+---
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: aws-agentcore-agent
+  title: AWS Bedrock AgentCore Agent (Python)
+  description: |
+    Create an AI agent hosted on Amazon Bedrock AgentCore Runtime.
+
+    This template provides the following for the newly created Component
+
+    * A Python agent built with the Strands Agents SDK
+      * With starter code and a system prompt
+      * With starter tests
+    * An AgentCore Runtime and its IAM execution role, defined with AWS SAM
+    * A container image build for the agent (Linux arm64, stored in ECR)
+    * GitHub Actions build and deploy workflows
+    * Optional AgentCore Memory for conversation memory
+    * Optional Spec Kit initialization
+
+  tags:
+    - aws
+    - agentcore
+    - bedrock
+    - ai
+    - agent
+    - python
+
+spec:
+  owner: group:00gjdgxs1ur6lsu
+  type: component
+
+  parameters:
+    - title: Component Info
+      required:
+        - lifecycle
+        - namespace
+        - github_org
+        - component_name
+        - description
+        - owner
+        - system
+        - domain
+        - environment
+        - account_id
+      properties:
+        lifecycle:
+          title: Lifecycle
+          type: string
+          description: Lifecycle for the component
+          default: production
+          ui:widget: hidden
+        namespace:
+          title: Namespace
+          type: string
+          description: Namespace for the component
+          default: default
+          ui:widget: hidden
+        github_org:
+          title: GitHub Org
+          type: string
+          description: GitHub organization to publish to
+          default: ServerlessOpsIO
+          ui:widget: hidden
+        component_name:
+          title: Name
+          type: string
+          description: |
+            Unique name of the component. The agent runtime is named
+            <name>_<branch>, which must begin with a letter and fit in 48
+            characters, so keep the name short.
+          ui:field: EntityNamePicker
+        description:
+          title: Description
+          type: string
+          description: Short description of the component
+        owner:
+          title: Owner
+          type: string
+          description: |
+            Owning group of entity.
+          ui:field: MyGroupsPicker
+          ui:options:
+            allowArbitraryValues: false
+        domain:
+          title: Domain
+          type: string
+          description: Domain the component belongs to.
+          ui:field: SoContextualEntityPicker
+          ui:options:
+            allowArbitraryValues: false
+            catalogFilter:
+              - kind: Domain
+            defaultKind: Domain
+        system:
+          title: System
+          type: string
+          description: System the component belongs to.
+          ui:field: SoContextualEntityPicker
+          ui:options:
+            allowArbitraryValues: false
+            catalogFilter:
+              - kind: System
+                relations.partOf: "{{ parameters.domain }}"
+            defaultKind: System
+        environment:
+          title: Environment
+          type: string
+          description: Environment the component belongs to.
+          ui:field: SoContextualEntityPicker
+          ui:options:
+            allowArbitraryValues: false
+            catalogFilter:
+              - kind: Resource
+                relations.partOf: "{{ parameters.system }}"
+                spec.type: environment
+        account_id:
+          title: Account ID
+          type: string
+          description: Cloud account to deploy to
+          ui:field: SoContextualEntityPicker
+          ui:options:
+            allowArbitraryValues: false
+            catalogFilter:
+              - kind: Resource
+                relations.dependencyOf: "{{ parameters.environment }}"
+                spec.type: cloud-account
+
+    - title: Agent configuration
+      required:
+        - agent_instructions
+        - model_id
+        - python_version
+        - enable_memory
+      properties:
+        agent_instructions:
+          title: Agent instructions
+          type: string
+          description: |
+            The agent's system prompt: who it is, what it does and the rules it
+            follows. It is written to src/agent/system_prompt.md and can be
+            changed later.
+          minLength: 1
+          ui:widget: textarea
+          default: "You are a helpful assistant. Answer directly and concisely. Say so when you do not know something."
+        model_id:
+          title: Model
+          type: string
+          description: |
+            Amazon Bedrock inference profile ID the agent uses, in the form
+            <scope>.<provider>.<model>. The deployment account needs access to
+            the model.
+          pattern: '^[a-z-]+\.[a-z0-9-]+\.[a-zA-Z0-9:_-]+$'
+          default: global.anthropic.claude-haiku-5-5
+        python_version:
+          title: Python Version
+          type: string
+          description: Python version to use
+          default: '3.14'
+          enum:
+            - '3.13'
+            - '3.14'
+        enable_memory:
+          title: "Remember conversations?"
+          type: boolean
+          description: |
+            Create an AgentCore Memory so the agent remembers earlier messages
+            in a session. Without it every request is answered on its own.
+          default: false
+      dependencies:
+        enable_memory:
+          oneOf:
+            - properties:
+                enable_memory:
+                  const: false
+            - required:
+                - memory_expiry_days
+              properties:
+                enable_memory:
+                  const: true
+                memory_expiry_days:
+                  title: Memory retention (days)
+                  type: integer
+                  description: Days a conversation's messages are kept
+                  minimum: 3
+                  maximum: 365
+                  default: 30
+
+    - title: Spec Kit
+      required:
+        - initialize_speckit
+      properties:
+        initialize_speckit:
+          title: "Initialize Spec Kit?"
+          type: boolean
+          description: Initialize Spec Kit in the generated project workspace
+          default: true
+      dependencies:
+        initialize_speckit:
+          oneOf:
+            - properties:
+                initialize_speckit:
+                  const: false
+            - required:
+                - speckit_integration
+              properties:
+                initialize_speckit:
+                  const: true
+                speckit_integration:
+                  title: Coding agent
+                  type: string
+                  description: AI coding agent Spec Kit is set up for
+                  default: claude
+                  enum:
+                    - claude
+                    - copilot
+                    - codex
+
+    - title: Copilot Cloud Agent
+      required: []
+      properties:
+        launch_copilot_agent:
+          title: "Launch Copilot agent?"
+          type: boolean
+          description: Launch a Copilot cloud agent after component creation
+          default: false
+      dependencies:
+        launch_copilot_agent:
+          oneOf:
+            - properties:
+                launch_copilot_agent:
+                  const: false
+            - required:
+                - github_auth
+                - agent_prompt
+              properties:
+                launch_copilot_agent:
+                  const: true
+                agent_prompt:
+                  title: Agent prompt
+                  type: string
+                  description: |
+                    Initial prompt to send to the Copilot cloud agent. When
+                    Spec Kit is initialized for Copilot, this is instead the
+                    description of the project and its principles used to
+                    write the Spec Kit constitution, which arrives as a pull
+                    request.
+                  minLength: 1
+                  ui:widget: textarea
+                github_auth:
+                  type: string
+                  ui:field: SoRequestUserCredentials
+                  ui:options:
+                    host: github.com
+                    requestUserCredentials:
+                      secretsKey: USER_GITHUB_TOKEN
+                      additionalScopes:
+                        github:
+                          - read:user
+
+  steps:
+    - id: fetch
+      name: Fetch Entity References
+      action: catalog:fetch
+      input:
+        entityRefs:
+          - ${{ parameters.owner }}
+          - ${{ parameters.domain }}
+          - ${{ parameters.system }}
+          - ${{ parameters.account_id }}
+
+    - id: create-skeleton
+      name: Create project skeleton
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          domain_name: ${{ parameters.domain | parseEntityRef | pick('name') }}
+          system_name: ${{ parameters.system | parseEntityRef | pick('name') }}
+          component_name: ${{ parameters.component_name }}
+          owner_name: ${{ parameters.owner | parseEntityRef | pick('name') }}
+          description: ${{ parameters.description }}
+          github_org: ${{ parameters.github_org }}
+          lifecycle: ${{ parameters.lifecycle }}
+          agent_instructions: ${{ parameters.agent_instructions }}
+          model_id: ${{ parameters.model_id }}
+          python_version: ${{ parameters.python_version }}
+          enable_memory: ${{ parameters.enable_memory }}
+          memory_expiry_days: ${{ parameters.memory_expiry_days }}
+          initialize_speckit: ${{ parameters.initialize_speckit }}
+
+    - id: create-pipeline
+      name: Create CI/CD pipeline
+      action: fetch:template
+      input:
+        url: ./pipeline
+        values:
+          python_version: ${{ parameters.python_version }}
+
+    - id: initialize-speckit
+      if: ${{ parameters.initialize_speckit }}
+      name: Initialize Spec Kit
+      action: github:speckit:init
+      input:
+        integration: ${{ parameters.speckit_integration }}
+
+    - id: publish
+      name: Publish to GitHub
+      action: publish:github
+      input:
+        repoUrl: github.com?repo=${{ parameters.component_name }}&owner=${{ parameters.github_org }}
+        repoVisibility: public
+        protectDefaultBranch: false
+        requiredApprovingReviewCount: 0
+        description: ${{ parameters.description }}
+        gitAuthorName: ${{ user.entity.spec.profile.displayName }}
+        gitAuthorEmail:  ${{ user.entity.spec.profile.email }}
+        gitCommitMessage: "Initial commit via Backstage"
+        defaultBranch: main
+        secrets:
+          DEPLOYMENT_ACCOUNT_ID: ${{ steps.fetch.output.entities[3].metadata.title }}
+        customProperties:
+          system: ${{ parameters.system | parseEntityRef | pick('name') }}
+          domain: ${{ parameters.domain | parseEntityRef | pick('name') }}
+          owner: ${{ parameters.owner | parseEntityRef | pick('name') }}
+
+    - id: register
+      name: Register in Backstage
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: "/catalog-info.yaml"
+
+    # The Spec Kit agent actions launch Copilot tasks, so the constitution is
+    # only created when Spec Kit was initialized for Copilot. Otherwise the
+    # prompt is sent to a plain Copilot cloud agent task.
+    - id: launch-copilot-agent
+      name: Launch Copilot agent
+      if: ${{ parameters.launch_copilot_agent and not (parameters.initialize_speckit and parameters.speckit_integration === 'copilot') }}
+      action: github:copilot:agent:launch
+      input:
+        repoUrl: github.com?repo=${{ parameters.component_name }}&owner=${{ parameters.github_org }}
+        prompt: ${{ parameters.agent_prompt }}
+        userCredentialsSecretKey: USER_GITHUB_TOKEN
+      secrets:
+        USER_GITHUB_TOKEN: ${{ secrets.USER_GITHUB_TOKEN }}
+
+    - id: create-speckit-constitution
+      name: Create Spec Kit constitution
+      if: ${{ parameters.launch_copilot_agent and parameters.initialize_speckit and parameters.speckit_integration === 'copilot' }}
+      action: github:speckit:constitution
+      input:
+        repoUrl: github.com?repo=${{ parameters.component_name }}&owner=${{ parameters.github_org }}
+        prompt: ${{ parameters.agent_prompt }}
+        createPullRequest: true
+        userCredentialsSecretKey: USER_GITHUB_TOKEN
+      secrets:
+        USER_GITHUB_TOKEN: ${{ secrets.USER_GITHUB_TOKEN }}
+
+  output:
+    links:
+      - title: New repository
+        url: ${{ steps.publish.output.remoteUrl }}
+      - title: Repository catalog-info.yaml file
+        url: ${{ steps.publish.output.remoteUrl }}/blob/main/catalog-info.yaml
+      - title: Open in catalog
+        icon: catalog
+        entityRef: ${{ steps.register.output.entityRef }}
+      - title: Launched agent task
+        url: ${{ steps['launch-copilot-agent'].output.taskUrl if parameters.launch_copilot_agent and not (parameters.initialize_speckit and parameters.speckit_integration === 'copilot') else nil }}
+      - title: Spec Kit constitution task
+        url: ${{ steps['create-speckit-constitution'].output.taskUrl if parameters.launch_copilot_agent and parameters.initialize_speckit and parameters.speckit_integration === 'copilot' else nil }}

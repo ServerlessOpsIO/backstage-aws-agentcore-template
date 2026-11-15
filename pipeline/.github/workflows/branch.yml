@@ -50,20 +50,13 @@ jobs:
       - name: Setup job workspace
         uses: ServerlessOpsIO/gha-setup-workspace@v2
 
-      - name: Setup Python
-        uses: actions/setup-python@v6
+      - name: Setup Python environment
+        uses: ServerlessOpsIO/gha-setup-python@v1
         with:
-          python-version: '${{ values.python_version }}'
-          cache: pip
-          cache-dependency-path: |
-            requirements-dev.txt
-            src/agent/requirements.txt
-
-      - name: Install dependencies
-        run: pip install -r requirements-dev.txt
+          python_version: '${{ values.python_version }}'
 
       - name: Run tests
-        run: pytest
+        run: pipenv run test-unit
 
       - name: Assume AWS credentials
         uses: ServerlessOpsIO/gha-assume-aws-credentials@v1
@@ -78,7 +71,7 @@ jobs:
           tags: {% raw %}${{ env.GITHUB_EVENT_REF_SLUG }},${{ env.GITHUB_SHA_SHORT }},${{ env.GITHUB_SHA }}{% endraw %}
           repo: {% raw %}${{ env.GITHUB_REPOSITORY_OWNER_PART_SLUG }}/${{ env.GITHUB_REPOSITORY_NAME_PART_SLUG }}{% endraw %}
           create_repo: true
-          path: src/agent
+          path: .
           dockerfile: src/agent/Dockerfile
           # FIXME: This is a workaround to deal with how the action works and so we can
           # continue to use the aws-actions/configure-aws-credentials

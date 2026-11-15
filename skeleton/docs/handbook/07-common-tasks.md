@@ -3,7 +3,8 @@
 ## Validate and deploy changes
 
 ```bash
-uv run --python ${{ values.python_version }} --with-requirements requirements-dev.txt pytest
+pipenv install --dev
+pipenv run test-unit
 sam validate --lint
 ```
 
@@ -16,7 +17,7 @@ Needs AWS credentials that can invoke the model.
 
 ```bash
 cd src/agent
-MODEL_ID=${{ values.model_id }} uv run --python ${{ values.python_version }} --with-requirements requirements.txt main.py
+MODEL_ID=${{ values.model_id }} pipenv run python main.py
 ```
 
 In another terminal:
@@ -62,8 +63,8 @@ output.
 
 ## Add a dependency
 
-Add it, pinned, to `src/agent/requirements.txt`. Use `requirements-dev.txt` for tools that are
-not needed in the image.
+Add it, pinned, to `[packages]` in the `Pipfile`. Use `[dev-packages]` for tools that are not
+needed in the image. Then run `pipenv lock` and commit `Pipfile.lock` with the `Pipfile`.
 {%- if values.enable_memory %}
 
 ## Continue or separate conversations

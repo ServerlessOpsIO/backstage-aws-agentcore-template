@@ -6,13 +6,16 @@
 | --- | --- | --- |
 | `.github/workflows/main.yml` (`Main`) | Push to `main` | `workflow_dispatch` |
 | `.github/workflows/branch.yml` (`Branches`) | Push to any branch except `main` | `workflow_dispatch` |
+{%- if values.enable_slack_app %}
+| `.github/workflows/slack-app.yml` (`Slack app`) | Push to any branch that changes a Slack file; once a day | `workflow_dispatch` with an action |
+{%- endif %}
 
-Pushes that change only `specs/**` or `docs/**` do not run either workflow. There is no
+Pushes that change only `specs/**` or `docs/**` do not run `Main` or `Branches`. There is no
 `pull_request` trigger.
 
 ## Jobs
 
-Both workflows run the same three jobs. **Both deploy**: every branch that runs the workflow
+`Main` and `Branches` run the same three jobs. **Both deploy**: every branch that runs the workflow
 gets its own stack.
 
 ### `build_infra`
@@ -61,3 +64,86 @@ A branch deployment creates a separate runtime{% if values.enable_memory %} and 
 
 - Images accumulate in the ECR repository; there is no lifecycle policy.
 - The image is not patched automatically. A rebuild picks up the current base image.
+{%- if values.enable_slack_app %}
+
+
+## The Slack app workflow
+
+`Slack app` keeps the Slack app in step with `slack/manifest.yaml`. It is a separate
+workflow from `Main` and `Branches`: neither waits for, blocks or cancels the other, and a
+commit shows a failed check if either fails. What it manages and how to repair it is in
+[The Slack app](08-slack-app.md).
+
+### When it runs
+
+The Slack files are `slack/**`, `scripts/slack_app/**` and the workflow file itself.
+
+| Trigger | Jobs |
+| --- | --- |
+| Push to a branch other than `main` that changes a Slack file | `check` |
+| Push to `main` that changes a Slack file | `check`, `apply`, `report` |
+| Once a day | `check`, `apply`, `report` |
+| Started by hand on `main` with the action `apply` | `check`, `apply`, `report` |
+| Started by hand on `main` with the action `create` | `check`, `create`, `report` |
+
+A push that changes no Slack file does not start it, so it does not contact Slack. A merge
+that changes only Slack files still starts `Main`, which builds and deploys the agent as for
+any other change.
+
+### Jobs
+
+| Job | What it does | Changes Slack |
+| --- | --- | --- |
+| `check` | Checks the app definition offline, then asks Slack to validate it. The Slack steps are skipped when the credential is not available. | Never |
+| `apply` | Asks Slack for the recorded app to confirm it exists, updates it to match the definition, sets its icon, then fails if the installed app lacks a permission in it. | Updates the app |
+| `create` | Creates the app and stores its values. Refuses while the recorded app exists. | Creates an app |
+| `report` | After a failed scheduled run, opens an issue labelled `slack-app-failure` or comments on the open one. After `apply` or `create` passes, closes it. | Never |
+
+`apply` and `create` run only on `main`. `report` is a job of its own so that it still runs
+when `check` fails and `apply` is skipped.
+
+### Who calls Slack
+
+The two everyday calls, validating and updating, are made by Slack's own GitHub Action,
+`slackapi/slack-github-action`, pinned to the commit of v4.0.0. The project's program,
+`pipenv run slack-app`, does what the action cannot:
+
+| Step | Done by | Why |
+| --- | --- | --- |
+| Offline check; build the request | Program (`check`, `prepare`) | Slack's schema, this project's rules, and holding events back until there is an address. |
+| `apps.manifest.validate`, `apps.manifest.export`, `apps.manifest.update` | Slack's action | |
+| Read Slack's answer | Program (`result`; `create` for its own check) | Turns the answer into one failure kind with what to do, which also feeds the failure issue. For `export` it tells a deleted app apart from an outage, so nothing recreates an app by mistake. |
+| Set the app's icon | Program (`icon`) | The action cannot upload a file. |
+| Check installed permissions | Program (`verify`) | Needs a response header the action does not return. |
+| `apps.manifest.create`, and storing the app's values | Program (`create`) | Slack's answer holds the app's secrets, and the action would expose the whole answer as a step output. The check before it, whether the recorded app still exists, goes through the action. |
+
+The action's step passes even when Slack rejects the call; the "Read Slack's answer" step
+that follows is the one that fails. Only the error fields of Slack's answer are passed to
+it, never the whole answer, because a step's inputs are shown in its log. The one exception
+is the manifest that `apps.manifest.export` returns, which holds no secrets and is passed on
+so that a change made outside the pipeline can be reported.
+
+### One run at a time
+
+The workflow is in one concurrency group, `slack-app`, that queues runs and cancels none in
+progress, so two updates to the app never overlap and the later one wins. GitHub keeps at
+most one run waiting in a group: if a third starts while one runs and one waits, the waiting
+one is cancelled in favour of the newest.
+
+### Credentials
+
+Jobs that contact Slack use `SLACK_SERVICE_TOKEN`, a Slack CLI service token that does not
+expire and is never rewritten. Only the `create` job writes to GitHub, using
+`SLACK_GHA_STORE_TOKEN`. See [Credentials and when they expire](08-slack-app.md#credentials-and-when-they-expire).
+
+### Secrets in logs
+
+GitHub masks stored secrets in logs. Values obtained during a run, such as a new
+app's signing secret, are masked by the program before anything else is
+printed. Run summaries and issues are built from a fixed list of messages and never from a
+response, because this repository's logs and issues are public.
+
+Do not re-run the `Slack app` workflow with **Enable debug logging**. Debug logging prints
+every step output, and the action's output after an update is Slack's whole answer, which
+may hold the app's secrets.
+{%- endif %}

@@ -30,6 +30,19 @@
 - Unit tests that replace the model with a fake, so they never call AWS.
 - GitHub Actions workflows that test the agent, build and push its image, and deploy the stack.
   Every deploying branch gets its own stack and its own runtime.
+{%- if values.enable_slack_app %}
+
+## The Slack app
+
+- A Slack app for the agent, named ${{ values.slack_app_name }}. Its definition is `slack/manifest.yaml`.
+- A workflow that checks the definition on branches, applies it to Slack when it changes on
+  `main`, reapplies it once a day, and creates the app only when started by hand.
+- The app's ID, signing secret, client ID, client secret and bot token stored as GitHub
+  values, for the service that will receive Slack events to read.
+- **Not yet:** the agent does not answer in Slack. Nothing in this project receives messages
+  from Slack, and until something does the app subscribes to no events. See
+  [The Slack app](08-slack-app.md).
+{%- endif %}
 
 ## Observability
 

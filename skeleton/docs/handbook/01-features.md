@@ -4,8 +4,10 @@
 
 - A Python ${{ values.python_version }} program in `src/agent/` using the Strands Agents SDK.
 - A system prompt in `src/agent/system_prompt.md`, set from the Backstage form.
-- A model on Amazon Bedrock, chosen by the `ModelId` deployment parameter
-  (`${{ values.model_id }}` by default).
+- A model on Amazon Bedrock, chosen by the `ModelId` deployment parameter. It is set to
+  `${{ values.model_id }}` in `cfn-parameters.json`.
+- A reasoning effort setting, `ReasoningEffort`, for how much the model reasons before it
+  answers. It is set to `${{ values.reasoning_effort }}`; `default` leaves the choice to the model.
 - Input checks before the model is called: empty prompts and prompts over `MaxPromptChars`
   (4,000 characters by default) are rejected without spending tokens.
 - A generic error reply. Failure details go to the log and never to the caller.

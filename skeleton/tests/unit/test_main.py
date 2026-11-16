@@ -123,3 +123,54 @@ def test_the_request_record_holds_no_prompt_or_reply_text(agent, context, record
     assert "a very private question" not in logged
     assert "The reply." not in logged
     assert records[0]["promptChars"] == len("a very private question")
+
+
+def test_a_required_setting_is_read_from_the_environment(monkeypatch):
+    monkeypatch.setenv("SOME_SETTING", "value")
+
+    assert main._require_env("SOME_SETTING") == "value"
+
+
+@pytest.mark.parametrize("value", [None, ""])
+def test_a_missing_required_setting_stops_the_agent(value, monkeypatch):
+    if value is None:
+        monkeypatch.delenv("SOME_SETTING", raising=False)
+    else:
+        monkeypatch.setenv("SOME_SETTING", value)
+
+    with pytest.raises(RuntimeError, match="SOME_SETTING"):
+        main._require_env("SOME_SETTING")
+
+
+class RecordingModel:
+    """Stands in for BedrockModel and records how it was constructed."""
+
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+
+
+@pytest.fixture
+def model_class(monkeypatch):
+    monkeypatch.setattr(main, "BedrockModel", RecordingModel)
+    monkeypatch.setattr(main, "_model", None)
+    return RecordingModel
+
+
+@pytest.mark.parametrize("effort", [None, "", "default"])
+def test_the_model_uses_its_own_reasoning_effort_by_default(effort, model_class, monkeypatch):
+    monkeypatch.setattr(main, "REASONING_EFFORT", effort, raising=False)
+
+    model = main.get_model()
+
+    assert model.kwargs == {"model_id": main.MODEL_ID}
+
+
+def test_a_reasoning_effort_setting_is_sent_to_the_model(model_class, monkeypatch):
+    monkeypatch.setattr(main, "REASONING_EFFORT", "low", raising=False)
+
+    model = main.get_model()
+
+    assert model.kwargs == {
+        "model_id": main.MODEL_ID,
+        "additional_request_fields": {"reasoning": {"effort": "low"}},
+    }

@@ -147,11 +147,27 @@ spec:
           title: Model
           type: string
           description: |
-            Amazon Bedrock inference profile ID the agent uses, in the form
-            <scope>.<provider>.<model>. The deployment account needs access to
-            the model.
-          pattern: '^[a-z-]+\.[a-z0-9-]+\.[a-zA-Z0-9:_-]+$'
-          default: global.anthropic.claude-haiku-5-5
+            Amazon Bedrock inference profile ID the agent uses. It must be a
+            United States profile, which starts with "us."; global profiles are
+            refused because the organization restricts regions. The deployment
+            account needs access to the model.
+          pattern: '^us\.[a-zA-Z0-9.:_-]+$'
+          default: us.openai.gpt-6-luna
+        reasoning_effort:
+          title: Reasoning effort
+          type: string
+          description: |
+            How much the model reasons before answering. "default" leaves the
+            choice to the model. Reasoning is billed as output.
+          default: default
+          enum:
+            - default
+            - none
+            - low
+            - medium
+            - high
+            - xhigh
+            - max
         python_version:
           title: Python Version
           type: string
@@ -284,6 +300,7 @@ spec:
           lifecycle: ${{ parameters.lifecycle }}
           agent_instructions: ${{ parameters.agent_instructions }}
           model_id: ${{ parameters.model_id }}
+          reasoning_effort: ${{ parameters.reasoning_effort }}
           python_version: ${{ parameters.python_version }}
           enable_memory: ${{ parameters.enable_memory }}
           memory_expiry_days: ${{ parameters.memory_expiry_days }}

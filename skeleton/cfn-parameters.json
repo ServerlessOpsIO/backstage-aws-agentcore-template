@@ -6,5 +6,7 @@
     "ContainerRepo": $secrets.AWS_ECR_REPO,
     "ContainerOrg": $env.GITHUB_REPOSITORY_OWNER_PART_SLUG,
     "ContainerImage": $env.GITHUB_REPOSITORY_NAME_PART_SLUG,
-    "ContainerTag": $env.GITHUB_SHA
+    "ContainerTag": $env.GITHUB_SHA,
+    "ModelId": "${{ values.model_id }}",
+    "ReasoningEffort": "${{ values.reasoning_effort }}"
 }

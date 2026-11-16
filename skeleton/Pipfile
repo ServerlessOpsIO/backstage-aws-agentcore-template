@@ -13,6 +13,10 @@ aws-opentelemetry-distro = "==0.22.0"
 [dev-packages]
 pytest = "==9.2.0"
 boto3 = "*"
+{%- if values.enable_slack_app %}
+pyyaml = "==6.0.3"
+jsonschema = "==4.26.0"
+{%- endif %}
 
 [requires]
 python_version = "${{ values.python_version }}"
@@ -20,3 +24,6 @@ python_version = "${{ values.python_version }}"
 [scripts]
 test = "pytest -vv tests"
 test-unit = "pytest -vv tests/unit"
+{%- if values.enable_slack_app %}
+slack-app = "python scripts/slack_app"
+{%- endif %}

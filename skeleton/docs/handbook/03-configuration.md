@@ -72,6 +72,28 @@ The runtime passes these to the agent: `MODEL_ID`, `REASONING_EFFORT`, `MAX_PROM
 
 Do not put secrets in environment variables or parameters. Store them in AWS Secrets Manager
 and grant the execution role permission to read them.
+{%- if values.enable_slack_app %}
+
+## Slack app values
+
+The `Slack app` workflow uses these repository-level GitHub values. None of them is in
+`cfn-parameters.json`, and nothing in `template.yaml` reads them yet. How each is created is
+in [The Slack app](08-slack-app.md#first-time-setup).
+
+| Name | Kind | Written by | Read by |
+| --- | --- | --- | --- |
+| `SLACK_SERVICE_TOKEN` | Secret | You | The `Slack app` workflow |
+| `SLACK_GHA_STORE_TOKEN` | Secret | You | The `create` job of the `Slack app` workflow |
+| `SLACK_APP_ID` | Variable | The creation run | The `Slack app` workflow |
+| `SLACK_SIGNING_SECRET` | Secret | The creation run | Nothing yet |
+| `SLACK_CLIENT_ID` | Secret | The creation run | Nothing yet |
+| `SLACK_CLIENT_SECRET` | Secret | The creation run | Nothing yet |
+| `SLACK_BOT_TOKEN` | Secret | You, after installing the app | The `Slack app` workflow |
+
+The last five are for the service that will receive Slack events. It should read them, never
+write them, and never call Slack's app definition service; only the `Slack app` workflow
+does.
+{%- endif %}
 
 ## Tags
 

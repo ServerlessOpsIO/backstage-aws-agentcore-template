@@ -16,6 +16,13 @@ boto3 = "*"
 {%- if values.enable_slack_app %}
 pyyaml = "==6.0.3"
 jsonschema = "==4.26.0"
+# What the Lambda functions in src/handlers import, and what their tests need.
+# Each function's own requirements.txt says what is packaged with it.
+aws-lambda-powertools = "==3.40.0"
+slack-sdk = "==3.47.0"
+moto = {extras = ["secretsmanager", "sqs"], version = "==5.2.5"}
+pytest-mock = "==3.17.0"
+common = {editable = true, path = "src/common"}
 {%- endif %}
 
 [requires]

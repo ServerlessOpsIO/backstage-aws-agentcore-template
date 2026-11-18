@@ -9,4 +9,11 @@
     "ContainerTag": $env.GITHUB_SHA,
     "ModelId": "${{ values.model_id }}",
     "ReasoningEffort": "${{ values.reasoning_effort }}"
+{%- if values.enable_slack_app %},
+    "MaxPromptChars": 16000,
+    "Hostname": "${{ values.slack_hostname }}",
+    "DnsZoneId": "/org/dns/ZoneId",
+    "SlackSigningSecret": $secrets.SLACK_SIGNING_SECRET,
+    "SlackBotToken": $secrets.SLACK_BOT_TOKEN
+{%- endif %}
 }

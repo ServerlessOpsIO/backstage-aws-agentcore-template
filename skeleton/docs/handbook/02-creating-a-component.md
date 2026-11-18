@@ -9,14 +9,14 @@ template, whose source is the `backstage-aws-agentcore-template` repository.
 | --- | --- | --- |
 | Component Info | Name, description, owner, domain, system, environment, account | `catalog-info.yaml`, `cfn-parameters.json`, `cfn-tags.json`, `samconfig.toml`, the repository's custom properties and the `DEPLOYMENT_ACCOUNT_ID` secret |
 | Agent configuration | Instructions, model, reasoning effort, Python version, conversation memory | `src/agent/system_prompt.md`, `ModelId` and `ReasoningEffort` in `cfn-parameters.json`, the Dockerfile and workflows, and the memory resources in `template.yaml` |
-| Slack app | Whether to add a Slack app, and its name, description and workspace | `slack/manifest.yaml`, the `Slack app` workflow, `scripts/slack_app/` and its tests, and the Slack app handbook page |
+| Slack | Whether to add a Slack front end, and the app's name, description, workspace and hostname | `slack/`, the `Slack app` workflow, `scripts/slack_app/`, the Lambda functions in `src/handlers/` and `src/common/`, `openapi.yaml`, the Slack resources in `template.yaml`, `Hostname` in `cfn-parameters.json`, their tests and two handbook pages. It also switches conversation memory on. |
 | Spec Kit | Whether to initialize Spec Kit, and for which coding agent | The Spec Kit files in the repository |
 | Copilot Cloud Agent | Whether to launch a Copilot task, and its prompt | A Copilot task on the new repository |
 
 ## What the template does
 
 1. Reads the owner, domain, system and account entities from the catalog.
-2. Copies the project skeleton and the workflows, and the Slack app files when selected.
+2. Copies the project skeleton and the workflows, and the Slack files when selected.
 3. Initializes Spec Kit, when selected.
 4. Publishes the repository to GitHub and sets the `DEPLOYMENT_ACCOUNT_ID` secret.
 5. Registers the component in the catalog.
@@ -29,7 +29,9 @@ Publishing pushes to `main`, which starts the `Main` workflow. That first run fa
 
 The template does not create the Slack app. Publishing also starts the `Slack app` workflow,
 which checks the app definition and then fails with `app_not_recorded` until the
-[first-time setup](08-slack-app.md#first-time-setup) is done.
+[first-time setup of the Slack app](08-slack-app.md#first-time-setup) is done. Until then
+`Main` deploys the agent without the Slack receiving service. Afterwards, follow the
+[first-time setup of Slack messaging](09-slack-messaging.md#first-time-setup).
 {%- endif %}
 
 ## Naming

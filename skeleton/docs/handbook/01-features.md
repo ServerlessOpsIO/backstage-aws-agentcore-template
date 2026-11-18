@@ -38,10 +38,24 @@
 - A workflow that checks the definition on branches, applies it to Slack when it changes on
   `main`, reapplies it once a day, and creates the app only when started by hand.
 - The app's ID, signing secret, client ID, client secret and bot token stored as GitHub
-  values, for the service that will receive Slack events to read.
-- **Not yet:** the agent does not answer in Slack. Nothing in this project receives messages
-  from Slack, and until something does the app subscribes to no events. See
-  [The Slack app](08-slack-app.md).
+  values.
+- **The agent answers in Slack.** A mention in a channel gets the agent's reply in a thread,
+  and a direct message gets it in the direct message. See
+  [Slack messaging](09-slack-messaging.md).
+
+## The Slack receiving service
+
+- A public address on API Gateway that accepts a request only when Slack's signature proves
+  Slack sent it.
+- Three Lambda functions in `src/handlers/`: one receives and queues, one asks the agent and
+  posts the reply, one cleans up after a message that was not finished.
+- Two SQS queues. No database: which threads ${{ values.slack_app_name }} takes part in is read from Slack.
+- One Slack thread is one agent session, shared by everyone in the thread. A direct message
+  is one continuous session, answered without threads. A thread's earlier messages are given
+  to the agent the first time ${{ values.slack_app_name }} answers in it.
+- Only full members of the workspace are answered.
+- What people write is never logged, and waits in a queue for at most an hour.
+- Present only in the stack deployed from `main`, once the Slack app's secrets exist.
 {%- endif %}
 
 ## Observability
@@ -52,5 +66,5 @@
 
 ## Not included
 
-These are left for the project to add when it needs them: a chat or API front end, reference
+These are left for the project to add when it needs them: {% if values.enable_slack_app %}a chat front end other than Slack{% else %}a chat or API front end{% endif %}, reference
 knowledge, tools and gateways, multi-agent orchestration, and dashboards or alerts.

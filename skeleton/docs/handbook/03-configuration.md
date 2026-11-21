@@ -59,9 +59,12 @@ override one:
 | --- | --- | --- |
 | `MaxPromptChars` | `4000` | Longest prompt accepted |
 | `LogLevel` | `INFO` | Agent log level |
-{%- if values.enable_memory %}
-| `MemoryEventExpiryDays` | `${{ values.memory_expiry_days }}` | Days a conversation's messages are kept.{% if values.enable_slack_app %} Also how old a Slack thread may be before ${{ values.slack_app_name }} asks for a new one.{% endif %} |
-{%- endif %}
+| `MemoryEventExpiryDays` | `${{ values.memory_expiry_days }}` | Days a conversation's messages and its session record are kept, and so how long a session can be picked up again.{% if values.enable_slack_app %} Also how old a Slack thread may be before ${{ values.slack_app_name }} asks for a new one, and so how long a session in a thread has to finish.{% endif %} |
+| `GitHubOrg` | `${{ values.github_org }}` | The GitHub organisation whose public repositories the agent may read. It reads no other. Set it to an empty string and the agent reads none. |
+
+Before CloudWatch Transaction Search is turned on, check that the runtime still has the two
+settings that keep what people write out of traces. See
+[Observability](06-observability.md#what-people-write-is-kept-out-of-traces).
 
 `ModelId` has no default in `template.yaml`, so it must be set in `cfn-parameters.json`. It
 must be a United States inference profile ID, which starts with `us.`, such as
@@ -79,8 +82,9 @@ configured model does not accept makes requests fail until it is corrected.
 
 ## Environment variables
 
-The runtime passes these to the agent: `MODEL_ID`, `REASONING_EFFORT`, `MAX_PROMPT_CHARS`, `LOG_LEVEL`
-{%- if values.enable_memory %} and `MEMORY_ID`{% endif %}. Add more under `EnvironmentVariables` in `template.yaml`.
+The runtime passes these to the agent: `MODEL_ID`, `REASONING_EFFORT`, `MAX_PROMPT_CHARS`,
+`LOG_LEVEL`, `MEMORY_ID`, `GITHUB_ORG` and the two settings that keep content out of traces.
+Add more under `EnvironmentVariables` in `template.yaml`.
 
 `MODEL_ID` is required. The agent has no fallback model and does not start without it.
 `REASONING_EFFORT` is optional; without it the model uses its own default.

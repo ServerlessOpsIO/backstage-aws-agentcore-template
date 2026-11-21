@@ -32,7 +32,7 @@ ICON = (
 
 DEFINED_SCOPES = {
     "app_mentions:read", "chat:write", "im:history", "channels:history", "groups:history",
-    "reactions:write", "users:read",
+    "reactions:write", "users:read", "files:write",
 }
 
 

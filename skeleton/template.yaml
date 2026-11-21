@@ -78,7 +78,6 @@ Parameters:
       - WARNING
       - ERROR
     Default: INFO
-{%- if values.enable_memory %}
 
   MemoryEventExpiryDays:
     Type: Number
@@ -86,7 +85,12 @@ Parameters:
     MinValue: 3
     MaxValue: 365
     Default: ${{ values.memory_expiry_days }}
-{%- endif %}
+
+  GitHubOrg:
+    Type: String
+    Description: "The GitHub organisation whose public repositories the agent may read. Empty: it reads none"
+    AllowedPattern: '^([A-Za-z0-9][A-Za-z0-9-]{0,38})?$'
+    Default: ${{ values.github_org }}
 {%- if values.enable_slack_app %}
 
   Hostname:
@@ -239,7 +243,6 @@ Resources:
                 Condition:
                   StringEquals:
                     bedrock:InferenceProfileArn: !Sub 'arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/${ModelId}'
-{%- if values.enable_memory %}
               - Sid: Memory
                 Effect: Allow
                 Action:
@@ -249,7 +252,6 @@ Resources:
                   - bedrock-agentcore:DeleteEvent
                   - bedrock-agentcore:ListSessions
                 Resource: !GetAtt AgentMemory.MemoryArn
-{%- endif %}
 
   # Runtime and memory names allow only letters, digits and underscores, with a
   # 48 character limit, so hyphens in the component and branch slugs become
@@ -275,10 +277,17 @@ Resources:
         REASONING_EFFORT: !Ref ReasoningEffort
         MAX_PROMPT_CHARS: !Ref MaxPromptChars
         LOG_LEVEL: !Ref LogLevel
-{%- if values.enable_memory %}
         MEMORY_ID: !GetAtt AgentMemory.MemoryId
-{%- endif %}
-{%- if values.enable_memory %}
+        GITHUB_ORG: !Ref GitHubOrg
+        # Keep what people write out of traces. Strands puts the content of every
+        # model call and tool call on its spans unless told not to: an empty list
+        # here makes it write [REDACTED] for messages, replies, the system prompt,
+        # tool arguments and tool results. The second setting is the same switch
+        # for the instrumentor that traces the call to Bedrock itself. Both must
+        # be in place before CloudWatch Transaction Search is turned on.
+        # See docs/handbook/06-observability.md.
+        OTEL_SEMCONV_STABILITY_OPT_IN: 'gen_ai_unredacted_attributes='
+        OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: 'false'
 
   # Short-term conversation memory: the events of each session are kept for
   # MemoryEventExpiryDays. No long-term strategies are configured.
@@ -288,7 +297,6 @@ Resources:
       Name: !Join ['_', !Split ['-', !Sub '${Component}_${CodeBranch}']]
       Description: 'Conversation memory for ${{ values.component_name }}'
       EventExpiryDuration: !Ref MemoryEventExpiryDays
-{%- endif %}
 {%- if values.enable_slack_app %}
 
 
@@ -538,12 +546,10 @@ Outputs:
   AgentRuntimeId:
     Description: "ID of the agent runtime. Logs are in /aws/bedrock-agentcore/runtimes/<id>-DEFAULT."
     Value: !GetAtt AgentRuntime.AgentRuntimeId
-{%- if values.enable_memory %}
 
   AgentMemoryId:
     Description: "ID of the agent's AgentCore Memory"
     Value: !GetAtt AgentMemory.MemoryId
-{%- endif %}
 {%- if values.enable_slack_app %}
 
   SlackMessageQueueUrl:

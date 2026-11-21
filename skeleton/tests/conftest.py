@@ -1,4 +1,4 @@
-"""Test setup that must run before the agent module is imported."""
+"""Test setup that must run before the agent module is imported, and shared fixtures."""
 
 import os
 
@@ -8,8 +8,26 @@ os.environ.setdefault("MODEL_ID", "test.provider.model")
 {%- if values.enable_slack_app %}
 
 from collections import namedtuple
+{%- endif %}
 
 import pytest
+
+
+@pytest.fixture
+def state():
+    """Stand in for the agent's state."""
+    import example
+    return example.FakeState()
+
+
+@pytest.fixture
+def test_skill(monkeypatch):
+    """Give the agent the tests' own skill in place of its real ones."""
+    import example
+    import loader
+    monkeypatch.setattr(loader, "SKILLS", example.SKILLS)
+    return example.SKILLS[example.SKILL]
+{%- if values.enable_slack_app %}
 
 
 @pytest.fixture()

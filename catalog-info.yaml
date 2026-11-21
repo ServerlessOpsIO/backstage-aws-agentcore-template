@@ -3,7 +3,7 @@ apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
   name: backstage-aws-agentcore-template
-  description: Create AI agents hosted on Amazon Bedrock AgentCore
+  description: Create conversational AI agents hosted on AWS AgentCore, built with the Strands SDK, using models on Bedrock. Not for coding agents.
   annotations:
     github.com/project-slug: ServerlessOpsIO/backstage-aws-agentcore-template
 spec:

@@ -1,15 +1,40 @@
 # Backstage AWS AgentCore Template
 
-This repository is a Backstage scaffolder template for creating a new AI agent hosted on
-[Amazon Bedrock AgentCore Runtime](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agents-tools-runtime.html).
+This repository is a Backstage scaffolder template for creating a new conversational AI agent.
 It generates a repository, publishes it to GitHub and registers it in the catalog.
+
+| | |
+| --- | --- |
+| Hosted on | [Amazon Bedrock AgentCore Runtime](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agents-tools-runtime.html) |
+| Harness | [Strands Agents SDK](https://strandsagents.com/) (Python) |
+| Model access | Amazon Bedrock |
+
+## What these agents are for
+
+Agents made from this template hold a conversation with people. They are for general or
+specialized knowledge, and for facilitating processes and exercises.
+
+They are not coding agents. The agent has no workspace, runs no commands and changes no
+repository. Use a different template for an agent that writes or changes code.
+
+The generated agent leads people through a structured session, stage by stage, and gives them
+a written document at the end. Everything a session needs except its subject comes with the
+project. The owner's work is the subject and the conversation: a persona, and a skill written
+as Markdown and one YAML file.
 
 ## What this template creates
 
-- A Python agent built with the [Strands Agents SDK](https://strandsagents.com/), with a
-  system prompt, input checks, structured request logging and unit tests
-- An AWS SAM `template.yaml` with an AgentCore Runtime and a least-privilege IAM execution role
-- Optionally, an AgentCore Memory so the agent remembers a conversation
+- A Python agent built with the [Strands Agents SDK](https://strandsagents.com/) that uses a
+  model on Amazon Bedrock, with input checks, structured request logging and unit tests
+- A persona (`src/agent/persona.md`), set from the form, and one example skill
+  (`src/agent/skills/decision-record/`) for the owner to replace
+- A session engine (`src/agent/session/`) that works from a skill's `session.yaml`: the
+  session record, the tools the model is offered in each stage, hints, facilitator's notes,
+  and the written document. A new kind of session needs no new code
+- A reader for public repositories of one GitHub organisation
+- A command that plays a fixed session against the deployed agent and checks the result
+- An AWS SAM `template.yaml` with an AgentCore Runtime, a least-privilege IAM execution role
+  and an AgentCore Memory, which holds each conversation and its session record
 - A Dockerfile for the agent's Linux arm64 container image
 - GitHub Actions workflows that test the agent, build and push the image to ECR, and deploy
   with AWS SAM
@@ -24,7 +49,7 @@ It generates a repository, publishes it to GitHub and registers it in the catalo
 
 ## Repository layout
 
-- `template.yaml`: the Backstage scaffolder template definition
+- `template-general.yaml`: the Backstage scaffolder template definition
 - `skeleton/`: files copied into the generated project
 - `pipeline/`: GitHub Actions workflows and the ECR repository policy used by the generated
   project
@@ -43,10 +68,9 @@ and `{% ... %}` are template syntax. GitHub Actions expressions in the workflows
 The template asks for:
 
 - component name, description, owning group, domain, system, environment and AWS account
-- the agent's instructions, its Bedrock model, the Python version, and whether it remembers
-  conversations
-- whether to add a Slack front end, and the app's name, description, workspace and hostname.
-  Selecting it switches conversation memory on
+- the agent's name and role, its Bedrock model, the Python version, and how long conversations
+  are remembered
+- whether to add a Slack front end, and the app's name, description, workspace and hostname
 - whether to initialize Spec Kit, and for which coding agent
 - whether to launch a Copilot cloud agent task
 
@@ -76,7 +100,22 @@ its specifications and its plan for the core agent. The image build follows the 
 workflows in `backstage-aws-sam-ecs-template`. The Slack front end comes from
 `engineering-agents`, features 006 (Slack app deployment) and 007 (Slack agent messaging).
 
+The session engine generalizes `engineering-agents` feature 008 (threat modelling session),
+whose agent leads one kind of session with a record written in code. Here the record, the
+tools and the document are made from each skill's `session.yaml`, and what is common to
+leading any session is in one shared guide. Three things feature 008 does are left out
+because a session file cannot express them: a rating worked out from a table, a table of
+which combinations have been covered, and a diagram drawn from the entries. A project that
+needs one adds it in `src/agent/session/record.py` and `render.py`.
+
+## Changing the template
+
+`skeleton/tests/unit/` tests the session engine against a skill of its own, in
+`skeleton/tests/unit/support/skills/`, so that a generated project's tests keep passing when
+its owner replaces the example skill. To run the tests, render the template first: the
+skeleton's files hold template syntax.
+
 ## Not included
 
-An API front end, reference knowledge, tools, multi-agent orchestration, and Datadog
-dashboards or alarms are not generated.
+An API front end, reference knowledge, multi-agent orchestration, and Datadog dashboards or
+alarms are not generated.

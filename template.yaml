@@ -3,11 +3,18 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: aws-agentcore-agent
-  title: AWS Bedrock AgentCore Agent (Python)
+  title: Conversational AI Agent (AWS AgentCore, Strands, Bedrock)
   description: |
-    Create a conversational AI agent hosted on Amazon Bedrock AgentCore
-    Runtime. The agent leads people through a structured session and gives
-    them a written document at the end. What a session is about is yours to
+    Create a conversational AI agent for general or specialized knowledge,
+    and for facilitating processes and exercises. This template is not for
+    coding agents.
+
+    * Hosted on: Amazon Bedrock AgentCore Runtime
+    * Harness: Strands Agents SDK (Python)
+    * Model access: Amazon Bedrock
+
+    The agent leads people through a structured session and gives them a
+    written document at the end. What a session is about is yours to
     write, as Markdown and one YAML file; the rest comes with the project.
 
     This template provides the following for the newly created Component
@@ -30,9 +37,11 @@ metadata:
   tags:
     - aws
     - agentcore
+    - strands
     - bedrock
     - ai
     - agent
+    - conversational
     - python
 
 spec:

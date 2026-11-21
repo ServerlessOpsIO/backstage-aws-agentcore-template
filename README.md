@@ -1,9 +1,21 @@
 # Backstage AWS AgentCore Template
 
-This repository is a Backstage scaffolder template for creating a new conversational AI agent
-hosted on
-[Amazon Bedrock AgentCore Runtime](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agents-tools-runtime.html).
+This repository is a Backstage scaffolder template for creating a new conversational AI agent.
 It generates a repository, publishes it to GitHub and registers it in the catalog.
+
+| | |
+| --- | --- |
+| Hosted on | [Amazon Bedrock AgentCore Runtime](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agents-tools-runtime.html) |
+| Harness | [Strands Agents SDK](https://strandsagents.com/) (Python) |
+| Model access | Amazon Bedrock |
+
+## What these agents are for
+
+Agents made from this template hold a conversation with people. They are for general or
+specialized knowledge, and for facilitating processes and exercises.
+
+They are not coding agents. The agent has no workspace, runs no commands and changes no
+repository. Use a different template for an agent that writes or changes code.
 
 The generated agent leads people through a structured session, stage by stage, and gives them
 a written document at the end. Everything a session needs except its subject comes with the

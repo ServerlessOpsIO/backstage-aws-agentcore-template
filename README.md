@@ -49,7 +49,7 @@ as Markdown and one YAML file.
 
 ## Repository layout
 
-- `template.yaml`: the Backstage scaffolder template definition
+- `template-general.yaml`: the Backstage scaffolder template definition
 - `skeleton/`: files copied into the generated project
 - `pipeline/`: GitHub Actions workflows and the ECR repository policy used by the generated
   project

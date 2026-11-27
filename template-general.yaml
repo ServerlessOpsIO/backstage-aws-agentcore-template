@@ -178,12 +178,22 @@ spec:
           title: Model
           type: string
           description: |
-            Amazon Bedrock inference profile ID the agent uses. It must be a
-            United States profile, which starts with "us."; global profiles are
-            refused because the organization restricts regions. The deployment
-            account needs access to the model.
+            Amazon Bedrock inference profile ID the agent uses. Choose one from
+            the list, or type another. It must be a United States profile,
+            which starts with "us."; global profiles are refused because the
+            organization restricts regions. The deployment account needs
+            access to the model.
           pattern: '^us\.[a-zA-Z0-9.:_-]+$'
           default: us.openai.gpt-6-luna
+          # Suggestions, not a restriction: the field is a text box with a
+          # drop-down of these, and any value that fits the pattern is accepted.
+          examples:
+            - us.openai.gpt-6.2-sol
+            - us.openai.gpt-5.6-sol
+            - us.openai.gpt-6.1-terra
+            - us.openai.gpt-5.6-terra
+            - us.openai.gpt-6-luna
+            - us.openai.gpt-5.6-luna
         reasoning_effort:
           title: Reasoning effort
           type: string

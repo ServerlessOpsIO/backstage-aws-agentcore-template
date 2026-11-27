@@ -31,6 +31,7 @@ python_version = "${{ values.python_version }}"
 [scripts]
 test = "pytest -vv tests"
 test-unit = "pytest -vv tests/unit"
+play-session = "python scripts/play_session.py"
 {%- if values.enable_slack_app %}
 slack-app = "python scripts/slack_app"
 {%- endif %}

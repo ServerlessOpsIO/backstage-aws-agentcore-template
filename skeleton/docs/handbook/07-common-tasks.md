@@ -39,10 +39,29 @@ export AGENT_RUNTIME_ARN=$(aws cloudformation describe-stacks \
 uv run --with boto3 scripts/invoke.py "What can you do?"
 ```
 
-## Change the agent's instructions
+To hold a conversation, send every message with the same `--session-id` and a `--speaker`.
+Documents in a reply are saved to the current folder.
 
-Edit `src/agent/system_prompt.md`. Add a test to `tests/unit/test_prompt.py` for each rule the
-prompt must keep.
+```bash
+SESSION=$(uuidgen)-$(uuidgen)
+uv run --with boto3 scripts/invoke.py --session-id $SESSION --speaker "Ana Souza" "Help us decide where to hold the offsite"
+```
+
+## Change who the agent is, or what it leads people through
+
+Who the agent is and the rules that always hold are in `src/agent/persona.md`; add a test to
+`tests/unit/test_prompt.py` for each rule it must keep. What a session is about is in a
+skill under `src/agent/skills/`. How any session is led is in `src/agent/session/guide.md`.
+[Guided sessions](10-guided-sessions.md) says how to change each and how to check the change.
+
+## Play a fixed session
+
+```bash
+export AGENT_RUNTIME_ARN=<as above>
+pipenv run play-session
+```
+
+See [Guided sessions](10-guided-sessions.md#playing-a-fixed-session).
 
 ## Change the model
 
@@ -62,9 +81,16 @@ Reasoning is billed as output, so lower levels cost less and answer sooner.
 
 ## Give the agent a tool
 
-Write a function with the Strands `@tool` decorator and pass it to `Agent(tools=[...])` in
-`build_agent` in `src/agent/main.py`. If the tool calls an AWS service, add a statement to
-`AgentExecutionRole` in `template.yaml` scoped to the resources it uses.
+A tool that records what participants give in a session needs no code: name the kind of
+entry in the skill's `session.yaml` and the tool is made from it. See
+[Guided sessions](10-guided-sessions.md#the-session-file).
+
+For any other tool, write a function with type hints and a docstring that describes it and
+its arguments, and add it to `OWN_TOOLS` in `src/agent/main.py` under the name the model
+should call it by. It is offered on every call to the model, in and out of a session. Say
+when to use it in the skill or in `src/agent/session/guide.md`. If the tool calls an AWS
+service, add a statement to `AgentExecutionRole` in `template.yaml` scoped to the resources
+it uses. What a tool is given and what it answers must not be logged.
 
 ## Grant a caller access
 
@@ -75,10 +101,9 @@ output.
 
 Add it, pinned, to `[packages]` in the `Pipfile`. Use `[dev-packages]` for tools that are not
 needed in the image. Then run `pipenv lock` and commit `Pipfile.lock` with the `Pipfile`.
-{%- if values.enable_memory %}
 
 ## Continue or separate conversations
 
-Requests that share a `runtimeSessionId` and `actorId` continue one conversation. Send a new
-session ID to start a new one. Messages expire after `MemoryEventExpiryDays`.
-{%- endif %}
+Requests that share a `runtimeSessionId` and `actorId` continue one conversation, and with it
+one session. Send a new session ID to start a new one. Messages and the session record expire
+after `MemoryEventExpiryDays`.

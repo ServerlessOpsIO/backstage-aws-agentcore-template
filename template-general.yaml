@@ -3,19 +3,33 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: aws-agentcore-agent
-  title: AWS Bedrock AgentCore Agent (Python)
+  title: Conversational AI Agent (AWS AgentCore, Strands, Bedrock)
   description: |
-    Create an AI agent hosted on Amazon Bedrock AgentCore Runtime.
+    Create a conversational AI agent for general or specialized knowledge,
+    and for facilitating processes and exercises. This template is not for
+    coding agents.
+
+    * Hosted on: Amazon Bedrock AgentCore Runtime
+    * Harness: Strands Agents SDK (Python)
+    * Model access: Amazon Bedrock
+
+    The agent leads people through a structured session and gives them a
+    written document at the end. What a session is about is yours to
+    write, as Markdown and one YAML file; the rest comes with the project.
 
     This template provides the following for the newly created Component
 
-    * A Python agent built with the Strands Agents SDK
-      * With starter code and a system prompt
-      * With starter tests
-    * An AgentCore Runtime and its IAM execution role, defined with AWS SAM
+    * A Python agent built with the Strands Agents SDK, using a model on
+      Amazon Bedrock
+      * A persona, and one example skill to replace with your own
+      * A session engine: stages, a session record, hints, facilitator's
+        notes and a written document, all driven by the skill
+      * Tests, and a command that plays a fixed session against the
+        deployed agent
+    * An AgentCore Runtime, its IAM execution role and an AgentCore Memory,
+      defined with AWS SAM
     * A container image build for the agent (Linux arm64, stored in ECR)
     * GitHub Actions build and deploy workflows
-    * Optional AgentCore Memory for conversation memory
     * Optional Slack front end: a Slack app deployed by a workflow, and a
       service that passes Slack messages to the agent and posts its replies
     * Optional Spec Kit initialization
@@ -23,9 +37,11 @@ metadata:
   tags:
     - aws
     - agentcore
+    - strands
     - bedrock
     - ai
     - agent
+    - conversational
     - python
 
 spec:
@@ -130,31 +146,51 @@ spec:
 
     - title: Agent configuration
       required:
-        - agent_instructions
+        - agent_name
+        - agent_role
         - model_id
         - python_version
-        - enable_memory
+        - memory_expiry_days
       properties:
-        agent_instructions:
-          title: Agent instructions
+        agent_name:
+          title: Agent name
           type: string
           description: |
-            The agent's system prompt: who it is, what it does and the rules it
-            follows. It is written to src/agent/system_prompt.md and can be
-            changed later.
+            What the agent is called in conversation and in the documents it
+            produces. It is written to src/agent/persona.md and can be changed
+            later.
+          minLength: 1
+          maxLength: 40
+          pattern: '^[^\s#<>`\[\]][^\n#<>`\[\]]*$'
+        agent_role:
+          title: Agent role
+          type: string
+          description: |
+            Who the agent is, completing the sentence "You are <name>, ...".
+            It opens src/agent/persona.md and can be changed later. What the
+            agent leads people through is not written here: that is a skill,
+            which you write in the new repository. It starts with an example
+            skill that leads people through making a decision.
           minLength: 1
           ui:widget: textarea
-          default: "You are a helpful assistant. Answer directly and concisely. Say so when you do not know something."
+          default: "a facilitator for engineering teams. You lead people through a structured conversation about their own work, so that they reach their own conclusions and leave with them written down."
         model_id:
           title: Model
           type: string
           description: |
-            Amazon Bedrock inference profile ID the agent uses. It must be a
-            United States profile, which starts with "us."; global profiles are
-            refused because the organization restricts regions. The deployment
-            account needs access to the model.
-          pattern: '^us\.[a-zA-Z0-9.:_-]+$'
+            Amazon Bedrock inference profile the agent uses. These are United
+            States profiles; global profiles are refused because the
+            organization restricts regions. The deployment account needs
+            access to the model. To use a model that is not listed, change
+            ModelId in the new repository's cfn-parameters.json.
           default: us.openai.gpt-6-luna
+          enum:
+            - us.openai.gpt-6.2-sol
+            - us.openai.gpt-5.6-sol
+            - us.openai.gpt-6.1-terra
+            - us.openai.gpt-5.6-terra
+            - us.openai.gpt-6-luna
+            - us.openai.gpt-5.6-luna
         reasoning_effort:
           title: Reasoning effort
           type: string
@@ -178,31 +214,17 @@ spec:
           enum:
             - '3.13'
             - '3.14'
-        enable_memory:
-          title: "Remember conversations?"
-          type: boolean
+        memory_expiry_days:
+          title: Memory retention (days)
+          type: integer
           description: |
-            Create an AgentCore Memory so the agent remembers earlier messages
-            in a session. Without it every request is answered on its own.
-          default: false
-      dependencies:
-        enable_memory:
-          oneOf:
-            - properties:
-                enable_memory:
-                  const: false
-            - required:
-                - memory_expiry_days
-              properties:
-                enable_memory:
-                  const: true
-                memory_expiry_days:
-                  title: Memory retention (days)
-                  type: integer
-                  description: Days a conversation's messages are kept
-                  minimum: 3
-                  maximum: 365
-                  default: 30
+            Days a conversation and its session are kept in AgentCore Memory.
+            A session cannot be picked up again after this, and with a Slack
+            front end a thread stops being answered this long after its first
+            message.
+          minimum: 3
+          maximum: 365
+          default: 14
 
     - title: Slack
       required:
@@ -218,12 +240,11 @@ spec:
             the reply. People mention the app in a channel and are answered in
             a thread, or send it a direct message. Only full members of the
             workspace are answered. The app can read every message in channels
-            it is added to, so that a thread can continue without a mention.
+            it is added to, so that a thread can continue without a mention,
+            and can post files, which is how a session's document arrives.
 
-            Conversation memory is switched on with this option, whatever was
-            chosen on the previous page, because a Slack thread is one
-            conversation. The app is not created until you follow the
-            first-time setup in the project's handbook.
+            The app is not created until you follow the first-time setup in
+            the project's handbook.
           default: false
       dependencies:
         enable_slack_app:
@@ -364,13 +385,12 @@ spec:
           description: ${{ parameters.description }}
           github_org: ${{ parameters.github_org }}
           lifecycle: ${{ parameters.lifecycle }}
-          agent_instructions: ${{ parameters.agent_instructions }}
+          agent_name: ${{ parameters.agent_name }}
+          agent_role: ${{ parameters.agent_role }}
           model_id: ${{ parameters.model_id }}
           reasoning_effort: ${{ parameters.reasoning_effort }}
           python_version: ${{ parameters.python_version }}
-          # A Slack thread is one conversation, so Slack needs memory.
-          enable_memory: ${{ parameters.enable_memory or parameters.enable_slack_app }}
-          memory_expiry_days: ${{ parameters.memory_expiry_days or 30 }}
+          memory_expiry_days: ${{ parameters.memory_expiry_days }}
           initialize_speckit: ${{ parameters.initialize_speckit }}
           enable_slack_app: ${{ parameters.enable_slack_app }}
           slack_app_name: ${{ parameters.slack_app_name }}
@@ -410,7 +430,7 @@ spec:
           component_name: ${{ parameters.component_name }}
           github_org: ${{ parameters.github_org }}
           python_version: ${{ parameters.python_version }}
-          memory_expiry_days: ${{ parameters.memory_expiry_days or 30 }}
+          memory_expiry_days: ${{ parameters.memory_expiry_days }}
           slack_app_name: ${{ parameters.slack_app_name }}
           slack_app_description: ${{ parameters.slack_app_description }}
           slack_workspace: ${{ parameters.slack_workspace }}

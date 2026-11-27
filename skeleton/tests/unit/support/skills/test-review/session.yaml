@@ -1,0 +1,83 @@
+# The skill the unit tests of the session engine run against. It uses every kind of
+# field and every setting, and is not part of the agent. The agent's own skills are
+# in src/agent/skills and are checked by tests/unit/test_skills.py.
+subject: system
+document:
+  title: Review
+  filename: review
+  method: Checked by hand.
+opening:
+  - you will not name findings
+findings_after: parts
+stages:
+  - name: scope
+    title: Scope
+    records: [scope_item]
+  - name: parts
+    title: Parts
+    records: [part]
+  - name: findings
+    title: Findings
+    records: [finding]
+  - name: rating
+    title: Rating
+    fills:
+      finding: [level]
+  - name: plan
+    title: Plan
+    records: [fix, finding]
+    fills:
+      fix: [owner]
+  - name: report
+    title: Report
+records:
+  scope_item:
+    prefix: S
+    title: Scope
+    singular: scope item
+    layout: list
+    group_by: kind
+    fields:
+      kind:
+        choices: [included, excluded]
+        required: true
+      text:
+        required: true
+  part:
+    prefix: P
+    title: Parts
+    label: name
+    fields:
+      name:
+        required: true
+      description: {}
+  finding:
+    prefix: F
+    title: Findings
+    description: Record a finding a participant named. Never one of your own.
+    fields:
+      part:
+        type: ref
+        to: part
+        required: true
+      text:
+        title: Finding
+        required: true
+      level:
+        choices: [high, low]
+        description: How serious the participants say it is.
+  fix:
+    prefix: FX
+    title: Fixes
+    layout: list
+    fields:
+      text:
+        required: true
+      findings:
+        type: refs
+        to: finding
+        title: Addresses
+        required: true
+      agreed_by:
+        type: people
+      owner: {}

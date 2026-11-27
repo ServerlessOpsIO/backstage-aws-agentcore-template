@@ -1,0 +1,125 @@
+# What a decision record session is made of. The agent's code works from this file:
+# the session record, the tools the model is offered in each stage, what the model is
+# told about the session, and the written document. The format is described in
+# docs/handbook/10-guided-sessions.md.
+
+# What a session is about, in a word or two. "Let's decide on our queueing technology"
+# starts a session whose decision is "queueing technology".
+subject: decision
+
+document:
+  title: Decision record
+  filename: decision-record
+  # Added to the Method section at the end of the document. Optional.
+  method: >-
+    Options were compared by the advantages and drawbacks the participants gave for each.
+
+# Said in the opening of every session, after what the agent says of every skill. Optional.
+opening:
+  - you will not propose options or say which is best
+
+# Repository findings are held back until this stage is complete, so that people say
+# what they know before they are told what a repository shows. Optional.
+findings_after: context
+
+# The stages, in order. Each needs references/<name>.md. `records` lists the kinds of
+# entry that can be added or changed in the stage. The last stage is the one in which
+# the document is given.
+stages:
+  - name: context
+    title: Context
+    records: [context]
+  - name: options
+    title: Options
+    records: [option, tradeoff]
+  - name: decision
+    title: Decision
+    records: [outcome, action, option, tradeoff]
+    # What the stage is meant to fill in. Anything still empty is shown to the model,
+    # and said once when the stage is completed.
+    fills:
+      action: [owner]
+  - name: record
+    title: Decision record
+
+# The kinds of entry. Each becomes a section of the document, in this order, and two
+# tools: add_<kind> and update_<kind>.
+records:
+  context:
+    prefix: X
+    title: Context
+    singular: context item
+    description: Record one thing a participant said about the decision to be made. Never one of your own.
+    layout: list
+    group_by: kind
+    fields:
+      kind:
+        choices: [goal, constraint, assumption]
+        description: goal for what the decision must achieve; constraint for a limit it must respect; assumption for something taken as given.
+        required: true
+      text:
+        description: What the participant said, shortened if need be.
+        required: true
+
+  option:
+    prefix: O
+    title: Options
+    description: Record an option a participant put forward. Never one of your own.
+    label: name
+    fields:
+      name:
+        description: A short name for the option.
+        required: true
+      description:
+        description: What choosing it would mean, as the participant described it.
+
+  tradeoff:
+    prefix: TR
+    title: Advantages and drawbacks
+    singular: advantage or drawback
+    description: Record an advantage or a drawback a participant gave for an option. Never one of your own.
+    fields:
+      option:
+        type: ref
+        to: option
+        description: The option it is about.
+        required: true
+      kind:
+        choices: [advantage, drawback]
+        description: Whether it counts for the option or against it.
+        required: true
+      text:
+        description: The advantage or drawback, in the participant's words.
+        required: true
+
+  outcome:
+    prefix: D
+    title: Decision
+    singular: decision
+    description: Record the decision the participants made. Never your own.
+    fields:
+      option:
+        type: ref
+        to: option
+        title: Chosen
+        description: The option they chose.
+        required: true
+      reason:
+        description: Their reason, in their words.
+        required: true
+      decided_by:
+        type: people
+        description: Whoever said it, and everyone who agreed.
+        required: true
+
+  action:
+    prefix: A
+    title: Actions
+    description: Record something the participants said they will do because of the decision.
+    fields:
+      text:
+        title: Action
+        description: What will be done.
+        required: true
+      owner:
+        description: Who is responsible, if they said.

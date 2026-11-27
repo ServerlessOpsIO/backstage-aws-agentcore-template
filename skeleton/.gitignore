@@ -79,3 +79,6 @@ Thumbs.db
 
 # AWS SAM
 .aws-sam/
+
+# Transcripts of played sessions. They hold a whole conversation.
+transcripts/

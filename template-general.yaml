@@ -224,7 +224,7 @@ spec:
             message.
           minimum: 3
           maximum: 365
-          default: 30
+          default: 14
 
     - title: Slack
       required:

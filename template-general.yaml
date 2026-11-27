@@ -178,16 +178,13 @@ spec:
           title: Model
           type: string
           description: |
-            Amazon Bedrock inference profile ID the agent uses. Choose one from
-            the list, or type another. It must be a United States profile,
-            which starts with "us."; global profiles are refused because the
+            Amazon Bedrock inference profile the agent uses. These are United
+            States profiles; global profiles are refused because the
             organization restricts regions. The deployment account needs
-            access to the model.
-          pattern: '^us\.[a-zA-Z0-9.:_-]+$'
+            access to the model. To use a model that is not listed, change
+            ModelId in the new repository's cfn-parameters.json.
           default: us.openai.gpt-6-luna
-          # Suggestions, not a restriction: the field is a text box with a
-          # drop-down of these, and any value that fits the pattern is accepted.
-          examples:
+          enum:
             - us.openai.gpt-6.2-sol
             - us.openai.gpt-5.6-sol
             - us.openai.gpt-6.1-terra

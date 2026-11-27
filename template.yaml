@@ -16,6 +16,7 @@ metadata:
     * A container image build for the agent (Linux arm64, stored in ECR)
     * GitHub Actions build and deploy workflows
     * Optional AgentCore Memory for conversation memory
+    * Optional Slack app, defined in the repository and deployed by a workflow
     * Optional Spec Kit initialization
 
   tags:
@@ -202,6 +203,54 @@ spec:
                   maximum: 365
                   default: 30
 
+    - title: Slack app
+      required:
+        - enable_slack_app
+      properties:
+        enable_slack_app:
+          title: "Add a Slack app?"
+          type: boolean
+          description: |
+            Add a Slack app for the agent: its definition, and a workflow that
+            creates it and keeps it matching the definition. The app can be
+            mentioned in channels and sent direct messages, and it can read
+            every message in channels it is added to so that it receives thread
+            replies. This only sets up the app. The agent does not answer in
+            Slack until a service that receives Slack events is added to the
+            project, and the app is not created until you follow the first-time
+            setup in the project's handbook.
+          default: false
+      dependencies:
+        enable_slack_app:
+          oneOf:
+            - properties:
+                enable_slack_app:
+                  const: false
+            - required:
+                - slack_app_name
+                - slack_app_description
+                - slack_workspace
+              properties:
+                enable_slack_app:
+                  const: true
+                slack_app_name:
+                  title: Slack app name
+                  type: string
+                  description: Name of the app and of its bot user in Slack
+                  minLength: 1
+                  maxLength: 35
+                slack_app_description:
+                  title: Slack app description
+                  type: string
+                  description: Short description shown on the app's profile in Slack
+                  minLength: 1
+                  maxLength: 140
+                slack_workspace:
+                  title: Slack workspace
+                  type: string
+                  description: Name of the Slack workspace the app is created in. Only used in the project's documentation.
+                  default: serverlessops
+
     - title: Spec Kit
       required:
         - initialize_speckit
@@ -305,6 +354,8 @@ spec:
           enable_memory: ${{ parameters.enable_memory }}
           memory_expiry_days: ${{ parameters.memory_expiry_days }}
           initialize_speckit: ${{ parameters.initialize_speckit }}
+          enable_slack_app: ${{ parameters.enable_slack_app }}
+          slack_app_name: ${{ parameters.slack_app_name }}
 
     - id: create-pipeline
       name: Create CI/CD pipeline
@@ -313,6 +364,28 @@ spec:
         url: ./pipeline
         values:
           python_version: ${{ parameters.python_version }}
+
+    # Adds the Slack app's definition, program, tests, workflow and handbook
+    # page. It also replaces the skeleton's Pipfile.lock with one that has the
+    # two extra development packages the Slack app program needs.
+    - id: create-slack-app
+      if: ${{ parameters.enable_slack_app }}
+      name: Add Slack app
+      action: fetch:template
+      input:
+        url: ./slack-app
+        replace: true
+        copyWithoutTemplating:
+          - Pipfile.lock
+          - scripts/**
+          - slack/manifest.schema.json
+        values:
+          component_name: ${{ parameters.component_name }}
+          github_org: ${{ parameters.github_org }}
+          python_version: ${{ parameters.python_version }}
+          slack_app_name: ${{ parameters.slack_app_name }}
+          slack_app_description: ${{ parameters.slack_app_description }}
+          slack_workspace: ${{ parameters.slack_workspace }}
 
     - id: initialize-speckit
       if: ${{ parameters.initialize_speckit }}
@@ -383,6 +456,8 @@ spec:
       - title: Open in catalog
         icon: catalog
         entityRef: ${{ steps.register.output.entityRef }}
+      - title: Slack app first-time setup
+        url: ${{ steps.publish.output.remoteUrl + '/blob/main/docs/handbook/08-slack-app.md#first-time-setup' if parameters.enable_slack_app else nil }}
       - title: Launched agent task
         url: ${{ steps['launch-copilot-agent'].output.taskUrl if parameters.launch_copilot_agent and not (parameters.initialize_speckit and parameters.speckit_integration === 'copilot') else nil }}
       - title: Spec Kit constitution task

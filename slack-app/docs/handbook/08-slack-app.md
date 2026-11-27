@@ -3,23 +3,22 @@
 This page covers the Slack app that represents the agent, as **${{ values.slack_app_name }}**, in the `${{ values.slack_workspace }}`
 workspace: how it is created, changed and repaired.
 
-**${{ values.slack_app_name }} does not answer in Slack yet.** The app gives the agent a name, a bot user and
-permissions. The service that receives messages from Slack and passes them to the agent is
-not part of this project yet. Until it is, the app is present in the workspace and does
-nothing when spoken to.
+The app gives the agent a name, a bot user and permissions. The service that receives
+messages from Slack and passes them to the agent is described in
+[Slack messaging](09-slack-messaging.md). Set the app up first, with the steps on this page,
+then follow [that page's first-time setup](09-slack-messaging.md#first-time-setup).
 
 The app can be mentioned in a channel and sent direct messages. It also receives thread
 replies that do not mention it, which needs permissions that cover every message in the
 channels it has been added to; Slack offers nothing narrower. Remove `channels:history`,
-`groups:history`, `message.channels` and `message.groups` from `slack/manifest.yaml`, and
-from the two lists in `tests/unit/`, if the agent should only see messages that mention it.
+The receiving service relies on this to continue a thread without a mention.
 
 ## How it works
 
 | File | Purpose |
 | --- | --- |
 | `slack/manifest.yaml` | The app definition: name, bot user, permissions and events. The single source of truth. |
-| `slack/settings.json` | The event delivery address, `event_request_url`. Empty for now. |
+| `slack/settings.json` | The event delivery address, `event_request_url`. |
 | `slack/icon.jpg` or `slack/icon.png` | The app's icon. Optional, and not created with the project. |
 | `slack/manifest.schema.json` | A copy of Slack's published schema for app definitions, used by the check. |
 | `scripts/slack_app/` | The program the pipeline runs around Slack's GitHub Action: `pipenv run slack-app <command>`. |
@@ -28,8 +27,9 @@ from the two lists in `tests/unit/`, if the agent should only see messages that 
 The pipeline makes the app in Slack match `slack/manifest.yaml`. **Do not change the app in
 the Slack console.** A change made there is undone by the next run, at most a day later.
 
-While `event_request_url` is empty, the events listed in `slack/manifest.yaml` are not sent
-to Slack, because Slack does not accept events without an address. The permissions are sent.
+If `event_request_url` is emptied, the events listed in `slack/manifest.yaml` are not sent
+to Slack, because Slack does not accept events without an address, and ${{ values.slack_app_name }} stops
+answering. The permissions are still sent.
 
 ## First-time setup
 
@@ -86,7 +86,13 @@ app managed by the pipeline. Four steps are done by hand; the reason is given fo
 6. **Confirm. By the pipeline.** Run the workflow again with the action `apply`. It passes
    when the app matches the definition and the installed app holds every permission in it.
 
-${{ values.slack_app_name }} is now listed under the workspace's apps.
+${{ values.slack_app_name }} is now listed under the workspace's apps. It does not answer yet: carry on with
+the [first-time setup of Slack messaging](09-slack-messaging.md#first-time-setup).
+
+When the app is created, nothing is answering at its event delivery address yet, so Slack
+has not verified the address and sends no events. If the `create` run fails because Slack
+refuses the unverified address, set `event_request_url` to `""` in `slack/settings.json`,
+merge, run `create` again, and put the address back once the receiving service is deployed.
 
 ### Being told about failures
 
@@ -172,12 +178,18 @@ adds one:
    stored as `SLACK_BOT_TOKEN`. If it has changed, store the new one.
 4. Run the workflow with the action `apply`. It passes, and closes the issue if one is open.
 
+The app holds `files:write` so that it can post the written document of a session and the
+facilitator's notes as files. It lets the app add files to any conversation it is in. Until
+the app has been installed again with it, the app answers but cannot deliver a document,
+and people see "I couldn't post the document. Please ask me for it again."
+
 Removing a permission needs no action: the run passes. Whether the installed app keeps a
 removed permission until it is next installed is not known.
 
 ## Supplying the event delivery address
 
-Do this once the project has a service for Slack to send events to.
+The address is set: it is the receiving service's, `https://${{ values.slack_hostname }}/slack/events`. These steps
+apply if it is ever emptied and put back, or changed.
 
 1. Set `event_request_url` in `slack/settings.json` to the service's `https://` address.
 2. Merge to `main`. The run sends the address and the events in `slack/manifest.yaml`.

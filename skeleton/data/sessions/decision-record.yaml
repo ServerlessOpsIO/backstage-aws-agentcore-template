@@ -1,0 +1,138 @@
+# A fixed session of the decision-record skill.
+#
+# scripts/play_session.py sends these turns to a deployed agent, in order, as one
+# conversation in a channel thread, and checks what comes back. Each turn is written
+# to stand alone: it says what it has to say whatever the agent asked before it.
+#
+# skill names the skill the session plays. A turn:
+#   speaker             who writes it
+#   text                what they write
+#   addressed           true when the message mentions the agent (default false)
+#   type                channel_thread (default) or direct_message
+#   expect              answer, no_reply or any (default any)
+#   documents           how many documents the reply must carry (left out: not checked)
+#   opening             true when the reply must be the opening, naming the stages
+#   part_way_document   true when the reply must carry the document without the notes
+#   finishes            true when the reply must carry the document and the notes
+#   changed_after_notes true when the turn changes the record after the notes
+#   note                what a person reading the transcript should look for
+#
+# The decision is made up. Nothing here is about a real one.
+
+skill: decision-record
+
+# Checked as behaviour: reported, and they do not fail the command.
+must_not_appear_in_document:
+  - Kafka
+must_appear_in_notes:
+  - on call
+
+turns:
+  - speaker: Ana Souza
+    addressed: true
+    text: "Can you help us decide how the import job should hand work to the workers?"
+    expect: answer
+    opening: true
+    note: The opening is given before the first question. The context stage is named. One question.
+
+  - speaker: Ana Souza
+    text: >-
+      We have to pick how the nightly import hands rows to the workers, because the cron
+      job falls over above a million rows. It must cope with ten million rows a night.
+      We can't add anything that needs someone on call at night. We're assuming the
+      workers stay on Lambda.
+    note: A goal, a constraint and an assumption are read back with identifiers.
+
+  - speaker: Ben Okafor
+    text: "Ana, did you bring the numbers from last week?"
+    expect: no_reply
+    note: Plainly between participants.
+
+  - speaker: Ana Souza
+    text: "No, but I remember them well enough."
+    expect: no_reply
+
+  - speaker: Ben Okafor
+    text: "That's the whole context. Let's move on to the options."
+    note: The options stage is named.
+
+  - speaker: Ana Souza
+    text: "What options do you think we have?"
+    expect: answer
+    note: ASKS FOR THE WORK. No option is proposed. A question back.
+
+  - speaker: Ben Okafor
+    text: >-
+      Two options. A queue: the import puts one message per batch of rows on SQS and the
+      workers read from it. Or a workflow: Step Functions fans the batches out to the
+      workers with a distributed map.
+    note: Two options are read back with identifiers.
+
+  - speaker: Ana Souza
+    text: >-
+      For the queue: we already run one, so there is nothing new to learn. Against it:
+      we have to build our own tracking of which batches finished. For the workflow: it
+      shows which batches failed without us building anything. Against it: none of us
+      has used a distributed map before.
+    note: Four advantages and drawbacks are read back.
+
+  - speaker: Ben Okafor
+    text: "Which one is better?"
+    expect: answer
+    note: ASKS FOR THE WORK. No option is recommended. The tradeoff is set out, or a question is asked.
+
+  - speaker: Ana Souza
+    text: "Can we see the record as it stands?"
+    expect: answer
+    documents: 1
+    part_way_document: true
+    note: The document arrives as a file, marked in progress, without the notes.
+
+  - speaker: Ben Okafor
+    text: "Nothing more on the options. On to the decision."
+    note: The decision stage is named. Nobody measured either option against the on-call constraint, so a hint may come, or a note is kept.
+
+  - speaker: Ana Souza
+    text: "I say the workflow, because seeing which batches failed matters more than familiarity."
+
+  - speaker: Ben Okafor
+    text: "Agreed, the workflow."
+    note: The decision is read back, decided by both.
+
+  - speaker: Ana Souza
+    text: "What should we do next?"
+    expect: answer
+    note: ASKS FOR THE WORK. No action is proposed. A question back.
+
+  - speaker: Ben Okafor
+    text: "I'll build a prototype of the distributed map this week. That's the only action. We're finished."
+    expect: answer
+    documents: 0
+    note: The action is read back with its owner. The finish is announced with the warning, and nothing is posted yet.
+
+  - speaker: Ana Souza
+    text: "Wait, not yet, I want to add something first."
+    expect: answer
+    documents: 0
+    note: OBJECTION. The finish is dropped and the session carries on.
+
+  - speaker: Ana Souza
+    text: "Add an action: I'll write up the failure modes we found. Now we're finished."
+    expect: answer
+    documents: 0
+    note: The action is read back. The finish is announced again.
+
+  - speaker: Ben Okafor
+    text: "Yes, go ahead."
+    expect: answer
+    documents: 2
+    finishes: true
+    note: The document and the facilitator's notes arrive as files.
+
+  - speaker: Ana Souza
+    addressed: true
+    text: "One more action for the record: Ben will tell the data team about the change. Can we have the record again?"
+    expect: answer
+    documents: 2
+    changed_after_notes: true
+    note: The new action is marked as made after the notes.

@@ -9,10 +9,15 @@ current as the agent, its infrastructure and its workflows change.
 - [Architecture](04-architecture.md): AWS resources, the request flow and the invoke interface.
 - [CI/CD pipeline](05-ci-cd.md): tests, image build, deployment and branch stacks.
 - [Observability](06-observability.md): logs, traces and metrics.
-- [Common tasks](07-common-tasks.md): change the prompt, the model, tools and permissions.
+- [Common tasks](07-common-tasks.md): change the persona, the model, tools and permissions.
 {%- if values.enable_slack_app %}
 - [The Slack app](08-slack-app.md): create, change and repair the Slack app.
+- [Slack messaging](09-slack-messaging.md): how a Slack message reaches the agent and the
+  reply gets back, first-time setup, and finding a failure.
 {%- endif %}
+
+- [Guided sessions](10-guided-sessions.md): how the agent leads a session, how to write a
+  skill of your own, what the code enforces, and how to check a change.
 
 ## Reading in Backstage
 

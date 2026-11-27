@@ -25,6 +25,16 @@ jobs:
         with:
           build_aws_account_id: {% raw %}${{ secrets.AWS_CICD_ACCOUNT_ID }}{% endraw %}
 
+{%- if values.enable_slack_app %}
+
+      # sam build packages the Lambda functions in src/handlers, and needs the
+      # Python version they run on to do it.
+      - name: Setup Python environment
+        uses: ServerlessOpsIO/gha-setup-python@v1
+        with:
+          python_version: '${{ values.python_version }}'
+{%- endif %}
+
       - name: Install AWS SAM
         uses: aws-actions/setup-sam@v3
 

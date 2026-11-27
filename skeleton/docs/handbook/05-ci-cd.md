@@ -22,6 +22,11 @@ gets its own stack.
 
 Runs `sam validate --lint` and `sam build`, then stores the template artifact for the deploy
 job.
+{%- if values.enable_slack_app %}
+It installs Python ${{ values.python_version }} first, because `sam build` also packages the three Lambda functions in
+`src/handlers/`, each with what its own `requirements.txt` lists and the shared code in
+`src/common/`. The functions exist in the `main` stack and no other.
+{%- endif %}
 
 ### `build_container`
 
@@ -52,7 +57,7 @@ publishes one, including commits that do not change the agent.
 
 ## Branch stacks
 
-A branch deployment creates a separate runtime{% if values.enable_memory %} and memory{% endif %} named after the branch.
+A branch deployment creates a separate runtime and memory named after the branch.
 
 - The runtime name `<component>_<branch>` must be 48 characters or fewer. A longer branch name
   fails the deployment.
